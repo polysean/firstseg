@@ -16,7 +16,7 @@ import os
 import torch.nn as nn
 from dataloader import ImageDataset
 
-
+print('here')
 ENCODER = 'efficientnet-b3'
 ENCODER_WEIGHTS = 'imagenet'
 CLASSES = 5
@@ -49,22 +49,17 @@ imgdir = 'comma10k/imgs'
 maskdir = 'comma10k/masks'
 
 train_dset = ImageDataset(imgdir, maskdir)#, augmentation=get_training_augmentation(), preprocessing=get_preprocessing(preprocessing_fn))
-trainloader = DataLoader(train_dset, batch_size=6, shuffle=False, num_workers=12)
+trainloader = DataLoader(train_dset, batch_size=8, shuffle=True, num_workers=12)
 
-num_epochs = 2
+val_dset = ImageDataset(imgdir, maskdir, val=True)
+valLoader = DataLoader(val_dset, batch_size=4, shuffle=True, num_workers=12)
+
+num_epochs = 10
 def train():
     print('starting the training loop . ... ... . .')
     for epoch in range(num_epochs):
         print(f'\nbegin epoch number {epoch + 1}')
         for index, (x, label) in enumerate(trainloader, 0):
-            print(index)
-            #right now we have x.shape == (4,1,3,896)
-            #please fix this later
-            # assert(x.shape == (4,1,3,896, 1184))
-            #has been fixed
-            # if x.shape != (4,3,896,1184):
-            #     print(f'shape of x is {x.shape} please do something about this')
-            # # x, label = x.squeeze(1), label.squeeze(1)
             
             model.zero_grad()
 
@@ -81,7 +76,27 @@ def train():
 
             if (index + 1)% 20 ==0:
                 print(f'loss is currently {realLoss}')
-                print('\n you suck at machine learning')
+                print('\nyou suck at machine learning')
+        
+        #validate at end of epoch
+        print(f'\nvalidating at end of epoch {epoch +1}')
+        model.eval()
+        with torch.no_grad():
+            torch.save(model.state_dict(), f'models/state_dicts/model_epoch{epoch +1}.pth')
+            losses = []
+            for index, (x, label) in enumerate(valLoader):
+                x.to(DEVICE)
+                label = label.to(DEVICE)
+
+                y = model(x)
+
+                loss = criterion(y, label)
+                losses.append(loss.cpu().numpy())
+            
+            print(f'\naverage loss on epoch {epoch +1} was {np.mean(losses)}')
+            print('continue training')
+        model.train()
+
 
 if __name__ == '__main__':
     train()
